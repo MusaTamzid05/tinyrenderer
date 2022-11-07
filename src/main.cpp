@@ -10,56 +10,52 @@ Model* model = nullptr;
 const int width = 800;
 const int height = 800;
 
-void generate_wireframe();
+void generate_mesh();
 
 int main(int argc, char** argv) {
-
-    TGAImage image(width, height, TGAImage::RGB);
-
-	Vec2i t0[3] = {Vec2i(10, 70),   Vec2i(50, 160),  Vec2i(70, 80)}; 
-	Vec2i t1[3] = {Vec2i(180, 50),  Vec2i(150, 1),   Vec2i(70, 180)}; 
-	Vec2i t2[3] = {Vec2i(180, 150), Vec2i(120, 160), Vec2i(130, 180)}; 
-
-	triangle(t0[0], t0[1], t0[2], image, red); 
-	triangle(t1[0], t1[1], t1[2], image, white); 
-	triangle(t2[0], t2[1], t2[2], image, green);
-
-    image.flip_vertically();
-    image.write_tga_file("triangle.tga");
+    generate_mesh();
 
     return 0;
 }
 
 
-void generate_wireframe() {
+void generate_mesh() {
 
 
     model = new Model("obj/african_head.obj");
     TGAImage image(width, height, TGAImage::RGB);
 
+    Vec3f light_dir(0, 0, -1);
+
     for(int i = 0; i < model->nfaces(); i += 1) {
         std::vector<int> face = model->face(i);
+        Vec2i screen_croods[3];
+        Vec3f world_coords[3];
 
-        for(unsigned int j = 0; j < 3; j += 1) {
-
-            Vec3f v0 = model->vert(face[j]);
-            Vec3f v1 = model->vert(face[(j + 1) % 3]);
-
-            int x0 = (v0.x + 1.0f) * width / 2;
-            int y0 = (v0.y + 1.0f) * height / 2;
-            int x1 = (v1.x + 1.0f) * width / 2;
-            int y1 = (v1.y + 1.0f) * height / 2;
-
-            line(x0, y0, x1, y1, image, white);
-
-            std::cout << x0 << " " << y0 << " " << x1 << " " << y1 << "\n";
-
+        for(int j = 0; j < 3; j += 1) {
+            Vec3f v = model->vert(face[j]);
+            screen_croods[j] = Vec2i((v.x + 1.) * width / 2, (v.y + 1) * height / 2.);
+            world_coords[j] = v;
         }
+
+
+        Vec3f n = (world_coords[2] - world_coords[0]) ^ (world_coords[1] - world_coords[0]);
+        n.normalize();
+
+        float intensity = n * light_dir;
+
+        if(intensity > 0)
+            triangle(
+                    screen_croods[0],
+                    screen_croods[1],
+                    screen_croods[2],
+                    image,
+                    TGAColor(intensity * 255, intensity * 255, intensity * 255, 255));
 
     }
 
     image.flip_vertically();
-    image.write_tga_file("output.tga");
+    image.write_tga_file("model_face.tga");
 
     /*
     std::cout << model->nfaces() << "\n";
